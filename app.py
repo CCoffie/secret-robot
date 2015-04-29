@@ -1,4 +1,4 @@
-import pyaudio, libardrone, time, wave, math, struct
+import pyaudio, time, wave, math, struct, zerorpc, ps_drone
 
 CHUNK = 1024
 WIDTH = 2
@@ -9,7 +9,6 @@ WAVE_FILE = "temp.wav"
 FORMAT = pyaudio.paInt16
 
 p = pyaudio.PyAudio()
-# drone = libardrone.ARDrone()
 
 stream = p.open(format=FORMAT,
                 channels=CHANNELS,
@@ -20,14 +19,30 @@ stream = p.open(format=FORMAT,
 
 print("* recording")
 
-# # Have drone takeoff
-# drone.takeoff()
-# time.sleap(1.5)
+
+# Have drone takeoff
+drone = ps_drone.Drone()       # Initializes the PS-Drone-API
+drone.startup()                # Connects to the drone and starts subprocesses
+drone.reset()
+
+drone.setConfig("control:altitude_max","3000")
+drone.setConfig("control:altitude_min","150")
+
+
+def get_altitude():
+    return drone.NavData()
+
+
+print(get_altitude())
+drone.takeoff()                # Drone starts
+time.sleep(2.5)                # Gives the drone time to start
+print(get_altitude())
+
+time.sleep(1.5)
 
 maxNormal=1
 prevVals=[0,255]
 prev=0
-
 
 def audio_value(value):
     global maxNormal
@@ -51,10 +66,21 @@ def audio_value(value):
 
 def control_drone(value):
     soundValue = audio_value(value)
-    # if soundValue < 150:
-    #     soundValue = 150
-    print(soundValue)
+    if soundValue <= 0:
+        soundValue = 1
     # Control the quadcopter now
+    maxAltitude = 3000
+    targetAltitude = ( maxAltitude * soundValue ) / 100
+    print(targetAltitude)
+
+    currentAltitude = get_altitude()
+
+    if targetAltitude < currentAltitude:
+        drone.moveUp()
+    elif targetAltitude > currentAltitude:
+        drone.moveDown()
+    else:
+        drone.hover()
 
 # Get sound from MIC
 all=[]
