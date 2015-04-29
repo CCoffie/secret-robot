@@ -11,8 +11,6 @@ FORMAT = pyaudio.paInt16
 p = pyaudio.PyAudio()
 # drone = libardrone.ARDrone()
 
-all=[]
-
 stream = p.open(format=FORMAT,
                 channels=CHANNELS,
                 rate=RATE,
@@ -26,10 +24,40 @@ print("* recording")
 # drone.takeoff()
 # time.sleap(1.5)
 
+maxNormal=1
+prevVals=[0,255]
+prev=0
+
+
+def audio_value(value):
+    global maxNormal
+    global prev
+    global prevVals
+    value = float(value)
+    maxNormal = float(maxNormal)
+    if value > maxNormal:
+		maxNormal = value
+    normalized = value / maxNormal * 100 # Change here for different values
+    normalized = int(normalized)
+    prevVals.append(normalized)
+    while len(prevVals)>=100:
+    	prevVals=prevVals[1:]
+    	if sum(prevVals)*1.0/len(prevVals)<=10:
+    		minNormal=1
+    		maxNormal=1
+    norm = (normalized + prev) / 2
+    prev = normalized
+    return norm
+
 def control_drone(value):
-    pass
+    soundValue = audio_value(value)
+    # if soundValue < 150:
+    #     soundValue = 150
+    print(soundValue)
+    # Control the quadcopter now
 
-
+# Get sound from MIC
+all=[]
 for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
     try:
         data = stream.read(CHUNK)
@@ -59,7 +87,7 @@ for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
                 summ = 0
                 tarW=str(amps[0]*1.0/delta/100)
                 #ser.write(tarW)
-                print(tarW)
+                control_drone(tarW)
                 delta = value
         all=[]
 
