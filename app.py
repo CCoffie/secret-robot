@@ -23,14 +23,16 @@ print("* recording")
 # Have drone takeoff
 drone = ps_drone.Drone()       # Initializes the PS-Drone-API
 drone.startup()                # Connects to the drone and starts subprocesses
-drone.reset()
+
 
 drone.setConfig("control:altitude_max","3000")
 drone.setConfig("control:altitude_min","150")
 
+drone.reset()
+
 
 def get_altitude():
-    return drone.NavData()
+    return drone.NavData["demo"][3]
 
 
 print(get_altitude())
@@ -69,18 +71,24 @@ def control_drone(value):
     if soundValue <= 0:
         soundValue = 1
     # Control the quadcopter now
-    maxAltitude = 3000
+    maxAltitude = 300
     targetAltitude = ( maxAltitude * soundValue ) / 100
-    print(targetAltitude)
+    # print(targetAltitude)
+
+    print "current altitude -" + str(get_altitude())
+    print "target altitude  -" + str(targetAltitude)
 
     currentAltitude = get_altitude()
 
     if targetAltitude < currentAltitude:
-        drone.moveUp()
-    elif targetAltitude > currentAltitude:
         drone.moveDown()
+        print("getting low")
+    elif targetAltitude > currentAltitude:
+        drone.moveUp()
+        print("moving on up")
     else:
         drone.hover()
+        print("staying put")
 
 # Get sound from MIC
 all=[]
