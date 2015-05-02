@@ -5,6 +5,8 @@ WIDTH = 2
 CHANNELS = 1
 RATE = 44100
 RECORD_SECONDS = 500000
+MAX_ALTITUDE = 6000
+MIN_ALTITUDE = 300
 WAVE_FILE = "temp.wav"
 FORMAT = pyaudio.paInt16
 
@@ -24,12 +26,14 @@ print("* recording")
 drone = ps_drone.Drone()       # Initializes the PS-Drone-API
 drone.startup()                # Connects to the drone and starts subprocesses
 
-
-drone.setConfig("control:altitude_max","3000")
-drone.setConfig("control:altitude_min","150")
+drone.trim()
 
 drone.reset()
 
+drone.setConfig("control:altitude_max", str(MAX_ALTITUDE))
+drone.setConfig("control:altitude_min", str(MIN_ALTITUDE))
+
+drone.setSpeed(1)
 
 def get_altitude():
     return drone.NavData["demo"][3]
@@ -71,8 +75,9 @@ def control_drone(value):
     if soundValue <= 0:
         soundValue = 1
     # Control the quadcopter now
-    maxAltitude = 300
-    targetAltitude = ( maxAltitude * soundValue ) / 100
+    targetAltitude = ((MAX_ALTITUDE / 10) * soundValue ) / 100
+    if targetAltitude <= (MIN_ALTITUDE / 10):
+        targetAltitude = (MIN_ALTITUDE / 10)
     # print(targetAltitude)
 
     print "current altitude -" + str(get_altitude())
@@ -80,12 +85,15 @@ def control_drone(value):
 
     currentAltitude = get_altitude()
 
-    if targetAltitude < currentAltitude:
-        drone.moveDown()
-        print("getting low")
-    elif targetAltitude > currentAltitude:
+    if targetAltitude == (MAX_ALTITUDE / 10):
+        # drone.doggyWag()
         drone.moveUp()
+    elif targetAltitude > currentAltitude:
+        drone.turnLeftUp()
         print("moving on up")
+    elif targetAltitude < currentAltitude:
+        drone.turnRightDown()
+        print("getting low")
     else:
         drone.hover()
         print("staying put")
@@ -119,7 +127,7 @@ for i in range(0, int(RATE / CHUNK * RECORD_SECONDS)):
                 value = int(math.sqrt(summ / 1470.0) / 10)
                 amps.append(value - delta)
                 summ = 0
-                tarW=str(amps[0]*1.0/delta/100)
+                tarW=str(amps[0]*1.0/delta/1000)
                 #ser.write(tarW)
                 control_drone(tarW)
                 delta = value
